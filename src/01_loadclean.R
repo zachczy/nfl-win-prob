@@ -12,8 +12,6 @@ wp_df <- pbp %>%
   select(
     game_id, # unique game identifier
     posteam_type,
-    home_team,
-    away_team,
     qtr,
     game_seconds_remaining,
     score_differential,
@@ -30,10 +28,36 @@ wp_df <- wp_df %>%
     result < 0 ~ 0,
     TRUE ~ NA_integer_
   ))
+wp_df$result <- NULL
 
 # mutating "posteam_type" into a home possession bool variable
 wp_df <- wp_df %>%
-  dplyr::mutate(home_possession = as.integer(posteam_type == "home"))
+  dplyr::mutate(home_possession = as.factor(posteam_type == "home"))
+wp_df$posteam_type <- NULL
+
+# changing "score_differential" to s.diff. for home team rather than posteam
+wp_df <- wp_df %>%
+  mutate(
+    home_score_differential = if_else(
+      home_possession == 1,
+      score_differential,
+      -score_differential
+    )
+  )
+wp_df$score_differential <- NULL
+
+# changing yardline to home team perspective
+wp_df <- wp_df %>%
+  mutate(
+    yardline_100 = if_else(
+      home_possession == 1,
+      yardline_100,
+      100 - yardline_100
+    )
+  )
+
+# changing col types
+wp_df <- wp_df %>% mutate(across(c(down, qtr, home_win), as.factor))
 
 # dropping rows where necessary info is missing
 wp_df <- wp_df %>%
@@ -43,7 +67,7 @@ wp_df <- wp_df %>%
     !is.na(ydstogo),
     !is.na(yardline_100),
     !is.na(game_seconds_remaining),
-    !is.na(score_differential),
+    !is.na(home_score_differential),
     !is.na(home_win)
   )
 
