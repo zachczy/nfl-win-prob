@@ -1,0 +1,7 @@
+To add in the future:
+- Identifying and marking plays with large WP/EPA swings
+    - Adding and marking scoring plays
+
+- Adding aesthetics (colors, frames, more pleasing angles)
+
+- Add final score

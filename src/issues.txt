@@ -1,0 +1,26 @@
+Needs fixing:
+
+- Does not account for kickoffs, because plays where neither team
+has possession are removed from the dataset and WP is extrapolated from
+the play before it.
+
+- Is only from a "home team" win probability 
+perspective and therefore can only really be 
+read as a prediction for the home team
+    - though im not sure about this, we might
+    just be able to extrapolate it
+
+- Overtime clumping may still be present
+
+- Accuracy of plots is questionable
+    - i.e., comparing "2025_16_LA_SEA" to actual
+    plots is really odd
+
+- Some huge one-play swings which I don't understand
+
+- Why doesn't it end at 100% sometimes ? could just be close games
+
+- Algorithm is assuming that overtime lasts 10 minutes - I think this is different in
+playoff games? (check for maximum game time remaining in OT, shouldnt be hard)
+
+- I don't love that you had to spam .data$ to avoid squigglies
