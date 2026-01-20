@@ -4,6 +4,7 @@ library(ggplot2)
 library(nflplotR)
 library(tidyr)
 library(ggtext)
+library(scales)
 
 wp_df <- readRDS("data/wp_df_baseline_2020s.rds")
 wp_model <- readRDS("nfl-win-prob-model-v1.rds")
@@ -13,23 +14,22 @@ down_levels <- levels(wp_df$home_down_state) # home_dn1, away_dn4
 
 teams_colors_logos <- nflreadr::load_teams()
 # initializing game_curve_data
-game_curve_data <- pbp_2025 %>%
-  sample_n(1) %>%
-  filter(!is.na(down)) %>%
-  mutate(
-    home_score_differential = home_score - away_score,
-    home_dist_to_goal =
-      ifelse(posteam == home_team, yardline_100, 100 - yardline_100),
-    yardline_100 = home_dist_to_goal, # to clarify for model
-    home_timeouts_remaining = as.factor(home_timeouts_remaining),
-    home_ydstogo = ifelse(posteam == home_team, ydstogo, -ydstogo),
+# game_curve_data <- pbp_2025 %>%
+#   sample_n(1) %>%
+#   filter(!is.na(down)) %>%
+#   mutate(
+#     home_score_differential = home_score - away_score,
+#     home_dist_to_goal =
+#       ifelse(posteam == home_team, yardline_100, 100 - yardline_100),
+#     yardline_100 = home_dist_to_goal, # to clarify for model
+#     home_timeouts_remaining = as.factor(home_timeouts_remaining),
 
-    # Matching the trained factor levels
-    home_down_state = factor(
-      paste0(ifelse(posteam == home_team, "home_", "away_"), "dn", down),
-      levels = down_levels
-    )
-  )
+#     # Matching the trained factor levels
+#     home_down_state = factor(
+#       paste0(ifelse(posteam == home_team, "home_", "away_"), "dn", down),
+#       levels = down_levels
+#     )
+#   )
 
 
 plot_wp_curve <- function(model = wp_model,
@@ -75,9 +75,7 @@ plot_wp_curve <- function(model = wp_model,
         ),
       yardline_100 = .data$home_dist_to_goal, # to clarify for model
       home_timeouts_remaining = as.factor(.data$home_timeouts_remaining),
-      home_ydstogo = ifelse(.data$posteam == .data$home_team,
-        .data$ydstogo, -.data$ydstogo
-      ),
+      home_ydstogo = ydstogo,
 
       # Matching the trained factor levels
       home_down_state = factor(
@@ -101,7 +99,7 @@ plot_wp_curve <- function(model = wp_model,
     )
   game_curve_data <- pbp_game %>%
     arrange(desc(game_seconds_remaining)) %>%
-    fill(zachs_wp, .direction = "down")
+    fill(zachs_wp, .direction = "up")
   # getting week, colors and logos
   week <- (game_curve_data %>% slice_tail(n = 1))$week
 
@@ -195,9 +193,11 @@ plot_wp_curve <- function(model = wp_model,
       breaks = qtr_breaks, labels = qtr_labels,
       expand = expansion(mult = c(0.00, 0.00))
     ) +
-    # scale_y_continuous(
-    #   expand = expansion(mult = c(0.00, 0.00))
-    # ) +
+    scale_y_continuous(
+      expand = expansion(mult = c(0.00, 0.00)),
+      limits = c(0, 1),
+      oob = scales::squish
+    ) +
     # geom_hline(yintercept = 0.5, linetype = "dashed", alpha = 0.8) +
 
     # labels and theme

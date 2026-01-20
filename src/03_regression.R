@@ -11,8 +11,8 @@ test <- readRDS("data/test_data_2020s.rds")
 # fitting baseline logistic regression
 wp_model <- glm(
   home_win ~ home_score_differential * game_seconds_remaining +
-    home_down_state * home_ydstogo +
-    yardline_100 +
+    home_down_state * ydstogo +
+    yardline_100 * home_down_state +
     home_timeouts_remaining * game_seconds_remaining,
   data = train,
   family = binomial()

@@ -48,14 +48,14 @@ wp_df <- wp_df %>%
 wp_df$score_differential <- NULL
 
 # changing yardline to home team perspective
-wp_df <- wp_df %>%
-  mutate(
-    yardline_100 = if_else(
-      home_possession == TRUE,
-      yardline_100,
-      100 - yardline_100
-    )
-  )
+# wp_df <- wp_df %>%
+#   mutate(
+#     yardline_100 = if_else(
+#       home_possession == TRUE,
+#       yardline_100,
+#       100 - yardline_100
+#     )
+#   )
 
 ## changing state of down & ydstogo - who has the ball?
 
@@ -73,33 +73,31 @@ wp_df <- wp_df %>%
 
 wp_df$down <- NULL
 
+
 # ydstogo - positive for home, neg for away
-wp_df <- wp_df %>%
-  mutate(
-    home_ydstogo = ifelse(home_possession == TRUE, ydstogo, -ydstogo)
-  )
-wp_df$ydstogo <- NULL
+# wp_df <- wp_df %>%
+#   mutate(
+#     home_ydstogo = ifelse(home_possession == TRUE, ydstogo, -ydstogo)
+#   )
+# wp_df$ydstogo <- NULL
 
 # changing col types
 wp_df <- wp_df %>%
   mutate(across(
-                c(home_down_state, qtr, home_timeouts_remaining,
-                  away_timeouts_remaining, home_win),
+                c(home_down_state, qtr, home_timeouts_remaining, home_win),
                 as.factor)
   )
 
 # dropping rows where necessary info is missing
 wp_df <- wp_df %>%
   dplyr::filter(
-    !is.na(home_possession),
     !is.na(home_down_state),
-    !is.na(home_ydstogo),
+    !is.na(ydstogo),
     !is.na(yardline_100),
     !is.na(game_seconds_remaining),
     !is.na(home_score_differential),
     !is.na(home_win),
-    !is.na(home_timeouts_remaining),
-    !is.na(away_timeouts_remaining)
+    !is.na(home_timeouts_remaining)
   )
 
 #saving dataset
