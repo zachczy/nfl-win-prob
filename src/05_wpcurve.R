@@ -70,11 +70,11 @@ plot_wp_curve <- function(model = wp_model, id) {
     filter(!is.na(down)) %>%
     mutate(
       home_score_differential = home_score - away_score,
-      home_dist_to_goal =
+      yardline_100 =  # <-- CHANGE THIS
         ifelse(posteam == home_team,
           yardline_100, 100 - yardline_100
         ),
-      yardline_100 = home_dist_to_goal, # to clarify for model
+      # Remove this line: yardline_100 = home_dist_to_goal,
       home_timeouts_remaining = as.factor(home_timeouts_remaining),
       home_ydstogo = ifelse(posteam == home_team,
         ydstogo, -ydstogo
