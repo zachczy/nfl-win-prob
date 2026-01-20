@@ -3,12 +3,15 @@ library(dplyr)
 library(ggplot2)
 library(nflplotR)
 library(tidyr)
+library(ggtext)
 
 wp_df <- readRDS("data/wp_df_baseline_2020s.rds")
 wp_model <- readRDS("nfl-win-prob-model-v1.rds")
 pbp_2025 <- readRDS("data/2025_pbp_data.rds")
 down_levels <- levels(wp_df$home_down_state) # home_dn1, away_dn4
 
+
+teams_colors_logos <- nflreadr::load_teams()
 # initializing game_curve_data
 game_curve_data <- pbp_2025 %>%
   sample_n(1) %>%
@@ -67,17 +70,21 @@ plot_wp_curve <- function(model = wp_model,
     mutate(
       home_score_differential = .data$home_score - .data$away_score,
       home_dist_to_goal =
-        ifelse(.data$posteam ==.data$home_team,
-               .data$yardline_100, 100 - .data$yardline_100),
+        ifelse(.data$posteam == .data$home_team,
+          .data$yardline_100, 100 - .data$yardline_100
+        ),
       yardline_100 = .data$home_dist_to_goal, # to clarify for model
       home_timeouts_remaining = as.factor(.data$home_timeouts_remaining),
       home_ydstogo = ifelse(.data$posteam == .data$home_team,
-                            .data$ydstogo, -.data$ydstogo),
+        .data$ydstogo, -.data$ydstogo
+      ),
 
       # Matching the trained factor levels
       home_down_state = factor(
-        paste0(ifelse(.data$posteam == .data$home_team, "home_", "away_"),
-               "dn", .data$down),
+        paste0(
+          ifelse(.data$posteam == .data$home_team, "home_", "away_"),
+          "dn", .data$down
+        ),
         levels = down_state_levels
       )
     )
@@ -102,32 +109,33 @@ plot_wp_curve <- function(model = wp_model,
   home_team_abbr <- game_curve_data$home_team[1]
   away_team_abbr <- game_curve_data$away_team[1]
 
-  .data$home_logo_url <- teams_colors_logos %>%
-    filter(.data$team_abbr == home_team_abbr) %>%
-    pull(.data$team_logo_espn)
+  home_logo_url <- teams_colors_logos %>%
+    filter(team_abbr == home_team_abbr) %>%
+    pull(team_logo_espn)
 
   winning_team_abbr = game_curve_data %>%
     slice(1) %>%
     summarize(winner = ifelse(.data$result > 0, home_team_abbr,
-                              away_team_abbr)) %>%
+      away_team_abbr
+    )) %>%
     pull(.data$winner)
 
   winning_team_color <- teams_colors_logos %>%
     filter(.data$team_abbr == winning_team_abbr) %>%
     pull(.data$team_color)
 
-  .data$winning_team_second_color <- teams_colors_logos %>%
-    filter(.data$team_abbr == winning_team_abbr) %>%
-    pull(.data$team_color2)
+  winning_team_second_color <- teams_colors_logos %>%
+    filter(team_abbr == winning_team_abbr) %>%
+    pull(team_color2)
 
 
   logo_data <- data.frame(
     x = c(3350, 3350),
     y = c(0.95, 0.05),
-    team = c(home_team_abbr, away_team_abbr)
+    team = c(away_team_abbr, home_team_abbr)
   )
 
-  
+
 
   game_curve_data$winner <- winning_team_abbr
 
@@ -163,28 +171,66 @@ plot_wp_curve <- function(model = wp_model,
     ))
   # plotting
   ggplot(game_curve_data, aes(x = .data$game_seconds_remaining, y = zachs_wp)) +
-    geom_ribbon(aes(ymin = 0.5, ymax = zachs_wp, fill = .data$winner),
+    # bottom team fill
+    geom_ribbon(aes(ymin = 0, ymax = zachs_wp, fill = home_team_abbr),
+      alpha = 0.5,
+      inherit.aes = TRUE
+    ) +
+    # top team fill
+    geom_ribbon(aes(ymax = 1, ymin = zachs_wp, fill = away_team_abbr),
       alpha = 0.5,
       inherit.aes = TRUE
     ) +
     geom_line(color = winning_team_color, size = 1.4) +
     nflplotR::scale_fill_nfl(type = "primary") +
     nflplotR::scale_color_nfl(type = "secondary") +
-    geom_line(aes(y = home_wp), color = "#000000", size = 1.4, linetype = "dashed") +
+    geom_line(aes(y = home_wp),
+      color = "#000000", size = 1.4, linetype = "dashed"
+    ) +
     geom_nfl_logos(
       data = logo_data, aes(x = .data$x, y = .data$y, team_abbr = .data$team),
       width = 0.12, inherit.aes = FALSE
     ) +
     scale_x_reverse(
       breaks = qtr_breaks, labels = qtr_labels,
-      expand = expansion(mult = c(0.08, 0.08))
+      expand = expansion(mult = c(0.00, 0.00))
     ) +
-    scale_y_continuous(
-      limits = c(0, 1), labels = scales::percent,
-      expand = expansion(mult = c(0.05, 0.05))
-    ) +
-    geom_hline(yintercept = 0.5, linetype = "dashed", alpha = 1) +
+    # scale_y_continuous(
+    #   expand = expansion(mult = c(0.00, 0.00))
+    # ) +
+    # geom_hline(yintercept = 0.5, linetype = "dashed", alpha = 0.8) +
 
+    # labels and theme
+    labs(
+      title = paste(
+        "Win Probability Curve:",
+        away_team_abbr, "at", home_team_abbr, "- Week", week
+      ),
+      x = "",
+      y = "",
+      subtitle = "zach's prediction: shaded\nnflfastr prediction: dashed",
+    ) +
+    coord_cartesian(ylim = c(0, 1), expand = FALSE, clip = "off") +
+    theme_minimal() +
+    theme(
+      plot.margin = margin(t = 20, r = 40, b = 10, l = 40),
+      plot.background = element_rect(fill = "#777777", color = NA),
+      # axis.line = element_line(color = "gray10"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.line = element_blank(),
+      axis.text.y = element_blank(),
+      axis.title.y = element_blank(),
+      axis.title.x = element_blank(),
+      panel.border = element_rect(color = "#282828", fill = NA, linewidth = 2),
+      plot.title = element_text(
+        size = 28, face = "bold", hjust = 0.5, margin = margin(b = 10),
+      ),
+      plot.subtitle = element_text(
+        size = 20, hjust = 0.5,
+        color = "grey30", margin = margin(b = 15)
+      )
+    ) +
     # adding scoring plays
     geom_nfl_logos(
       data = scoring_plays,
@@ -205,26 +251,16 @@ plot_wp_curve <- function(model = wp_model,
       fontface = "bold",
       color = "black",
       inherit.aes = FALSE
-    ) +
-
-    # labels and theme
-    labs(
-      title = paste(
-        "Win Probability Curve:",
-        away_team_abbr, "at", home_team_abbr, "- Week", week
-      ),
-      x = "",
-      y = ""
-    ) +
-    theme_minimal() +
-    theme(
-      plot.margin = margin(t = 20, r = 10, b = 20, l = 10),
-      axis.line = element_line(color = "gray10")
-    ) +
-    annotate("text", label =
-               "zachs prediction: shaded\nnflfastr prediction: dotted",
-             x = 1800, y = 1,
-             color = "#000000", size = 8,
-             alpha = 0.7)
+    )
 }
 plot_wp_curve()
+
+
+ggsave(
+  filename = "nfl_win_probability.png",
+  plot = last_plot(), # Saves the most recent plot displayed
+  width = 12, # Horizontal length
+  height = 6, # Vertical height (creating a 2:1 wide look)
+  units = "in", # Inches
+  dpi = 300 # High resolution for crisp logos and textbg = "#404040"
+)

@@ -5,3 +5,19 @@ To add in the future:
 - Adding aesthetics (colors, frames, more pleasing angles)
 
 - Add final score
+
+- Make it interactive!
+    - Hover over scoring/impactful plays to see
+    play description
+    - Hover over line to see WP%
+    - Input a game state to see your probability
+
+- Come up with a way to compare zachs_wp to nflfastR wp
+    - which is better over a single game? 
+        - possibly avg. distance from outcome over the game,
+        maybe multiplied by time to game end
+    - maybe even quantify what accounts for large differences
+    in wp
+
+- find teams with the lowest winning % over a whole season
+    - least time over 50% win prob (by game_seconds_remaining)

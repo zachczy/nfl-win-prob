@@ -24,3 +24,15 @@ read as a prediction for the home team
 playoff games? (check for maximum game time remaining in OT, shouldnt be hard)
 
 - I don't love that you had to spam .data$ to avoid squigglies
+
+- Save teams_colors_logos outside function so you don't have
+to call it every time
+
+- Sometimes starts out with an already huge WP difference
+    - this really shouldn't be the case because it doesn't
+    take team into account
+    - could be due to kickoff returns
+    - could be due to model taking things into account
+    that it really shouldn't (i doubt this?)
+    - could be due to zachs_wp not being properly aligned to time 
+    (i doubt this too and it seems generally lined up with wp)

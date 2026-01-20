@@ -12,7 +12,6 @@ test <- readRDS("data/test_data_2020s.rds")
 wp_model <- glm(
   home_win ~ home_score_differential * game_seconds_remaining +
     home_down_state * home_ydstogo +
-    home_ydstogo +
     yardline_100 +
     home_timeouts_remaining * game_seconds_remaining,
   data = train,
