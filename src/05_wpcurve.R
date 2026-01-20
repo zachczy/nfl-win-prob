@@ -7,9 +7,8 @@ library(ggtext)
 library(scales)
 
 wp_df <- readRDS("data/wp_df_baseline_2020s.rds")
-wp_model <- readRDS("nfl-win-prob-model-v1.rds")
+wp_model <- readRDS("nfl-win-prob-model-v2.rds")
 pbp_2025 <- readRDS("data/2025_pbp_data.rds")
-down_levels <- levels(wp_df$home_down_state) # home_dn1, away_dn4
 
 
 teams_colors_logos <- nflreadr::load_teams()
@@ -32,8 +31,7 @@ teams_colors_logos <- nflreadr::load_teams()
 #   )
 
 
-plot_wp_curve <- function(model = wp_model,
-                          down_state_levels = down_levels, id) {
+plot_wp_curve <- function(model = wp_model, id) {
   if (missing(id)) {
     id_to_plot <- (pbp_2025 %>% sample_n(1))$game_id
   } else {
@@ -65,26 +63,24 @@ plot_wp_curve <- function(model = wp_model,
     qtr_labels <- c("Final", "Q4", "Q3", "Q2", "Q1")
   }
 
-  scrimmage_data <- pbp_game %>%
-    filter(!is.na(.data$down)) %>%
-    mutate(
-      home_score_differential = .data$home_score - .data$away_score,
-      home_dist_to_goal =
-        ifelse(.data$posteam == .data$home_team,
-          .data$yardline_100, 100 - .data$yardline_100
-        ),
-      yardline_100 = .data$home_dist_to_goal, # to clarify for model
-      home_timeouts_remaining = as.factor(.data$home_timeouts_remaining),
-      home_ydstogo = ydstogo,
+  pbp_game <- pbp_game %>%
+    dplyr::mutate(h_possession = (posteam_type == "home"))
 
-      # Matching the trained factor levels
-      home_down_state = factor(
-        paste0(
-          ifelse(.data$posteam == .data$home_team, "home_", "away_"),
-          "dn", .data$down
+  scrimmage_data <- pbp_game %>%
+    filter(!is.na(down)) %>%
+    mutate(
+      home_score_differential = home_score - away_score,
+      home_dist_to_goal =
+        ifelse(posteam == home_team,
+          yardline_100, 100 - yardline_100
         ),
-        levels = down_state_levels
-      )
+      yardline_100 = home_dist_to_goal, # to clarify for model
+      home_timeouts_remaining = as.factor(home_timeouts_remaining),
+      home_ydstogo = ifelse(posteam == home_team,
+        ydstogo, -ydstogo
+      ),
+      down = as.factor(down),
+      home_possession = as.numeric(h_possession)
     )
 
   scrimmage_data$zachs_wp <- predict(wp_model,
@@ -253,7 +249,10 @@ plot_wp_curve <- function(model = wp_model,
       inherit.aes = FALSE
     )
 }
+plot_wp_curve(id = "2025_15_CLE_CHI") # This is crazy!
+
 plot_wp_curve()
+
 
 
 ggsave(

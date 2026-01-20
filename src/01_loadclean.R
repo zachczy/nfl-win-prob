@@ -5,7 +5,9 @@ library(ggrepel)
 options(scipen = 9999)
 
 # loading pbp data from the 2020s
-pbp <- load_pbp(2020:2025)
+# pbp <- load_pbp(2020:2025)
+
+pbp <- readRDS("data/2020s_pbp_data.rds")
 
 # creating a dataframe with select variables
 wp_df <- pbp %>%
@@ -33,45 +35,37 @@ wp_df$result <- NULL
 
 # mutating "posteam_type" into a home possession bool variable
 wp_df <- wp_df %>%
-  dplyr::mutate(home_possession = as.factor(posteam_type == "home"))
+  dplyr::mutate(home_possession = (posteam_type == "home"))
+wp_df$home_possession <- as.numeric(wp_df$home_possession)
 wp_df$posteam_type <- NULL
 
 # changing "score_differential" to s.diff. for home team rather than posteam
 wp_df <- wp_df %>%
   mutate(
     home_score_differential = if_else(
-      home_possession == TRUE,
+      home_possession == 1,
       score_differential,
       -score_differential
     )
   )
 wp_df$score_differential <- NULL
 
-# changing yardline to home team perspective
-# wp_df <- wp_df %>%
-#   mutate(
-#     yardline_100 = if_else(
-#       home_possession == TRUE,
-#       yardline_100,
-#       100 - yardline_100
-#     )
-#   )
+
+wp_df <- wp_df %>%
+  mutate(
+    yardline_100 = if_else(
+      home_possession == 1,
+      yardline_100,
+      100 - yardline_100
+    )
+  )
 
 ## changing state of down & ydstogo - who has the ball?
 
-# down
 wp_df <- wp_df %>%
-  mutate(
-    home_down_state =
-      as.factor(
-                paste0(
-                       ifelse(
-                              home_possession == TRUE,
-                              "home_", "away_"), "dn",
-                       down))
+  dplyr::filter(
+    !is.na(down),
   )
-
-wp_df$down <- NULL
 
 
 # ydstogo - positive for home, neg for away
@@ -84,14 +78,14 @@ wp_df$down <- NULL
 # changing col types
 wp_df <- wp_df %>%
   mutate(across(
-                c(home_down_state, qtr, home_timeouts_remaining, home_win),
+                c(down, qtr, home_timeouts_remaining, home_win),
                 as.factor)
   )
 
 # dropping rows where necessary info is missing
 wp_df <- wp_df %>%
   dplyr::filter(
-    !is.na(home_down_state),
+    !is.na(home_possession),
     !is.na(ydstogo),
     !is.na(yardline_100),
     !is.na(game_seconds_remaining),
@@ -100,5 +94,5 @@ wp_df <- wp_df %>%
     !is.na(home_timeouts_remaining)
   )
 
-#saving dataset
+# saving dataset
 saveRDS(wp_df, "data/wp_df_baseline_2020s.rds")

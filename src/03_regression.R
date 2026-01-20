@@ -11,14 +11,16 @@ test <- readRDS("data/test_data_2020s.rds")
 # fitting baseline logistic regression
 wp_model <- glm(
   home_win ~ home_score_differential * game_seconds_remaining +
-    home_down_state * ydstogo +
-    yardline_100 * home_down_state +
+    I(home_score_differential^2) +
+    home_possession * down +
+    home_possession * ydstogo +
+    home_possession * yardline_100 +
     home_timeouts_remaining * game_seconds_remaining,
   data = train,
   family = binomial()
 )
 
-saveRDS(wp_model, "nfl-win-prob-model-v1.rds")
+saveRDS(wp_model, "nfl-win-prob-model-v2.rds")
 
 # adding predictor of home win prob
 test <- test %>%
@@ -103,3 +105,4 @@ ggplot(calibration_df, aes(x = bin, y = actual_win_rate)) +
     size = "Number of Plays"
   ) +
   theme_minimal()
+

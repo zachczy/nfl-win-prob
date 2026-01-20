@@ -1,4 +1,4 @@
-wp_model <- readRDS("nfl-win-prob-model-v1.rds")
+wp_model <- readRDS("nfl-win-prob-model-v2.rds")
 
 wp_df <- readRDS("data/wp_df_baseline_2020s.rds")
 
@@ -6,7 +6,6 @@ pbp_2025 <- readRDS("data/2025_pbp_data.rds")
 
 # getting possible levels for variables
 
-down_levels <- levels(wp_df$home_down_state) # home_dn1, away_dn4
 
 # game_seconds_remaining should be 0 to 3600
 
@@ -16,7 +15,7 @@ down_levels <- levels(wp_df$home_down_state) # home_dn1, away_dn4
 
 predict_current_wp <- function(home_score, away_score,
                                game_secs_remaining,
-                               ydstogoal, down, yardstogo,
+                               ydstogoal, which_down, yardstogo,
                                pos_team, home_team,
                                home_tos) {
   if (pos_team == home_team) {
@@ -29,34 +28,33 @@ predict_current_wp <- function(home_score, away_score,
   h_timeouts <- home_tos
   yds_to_go <- yardstogo
 
-  dn_string <- paste0(
-                      ifelse(h_possession == 1, "home_", "away_"),
-                      "dn", down)
-
   input_data <- data.frame(
-    home_down_state = factor(dn_string, levels = down_levels),
+    down = as.factor(which_down),
     home_score_differential = h_score_diff,
     game_seconds_remaining = game_secs_remaining,
     yardline_100 = h_dist_goal,
     ydstogo = yds_to_go,
-    home_timeouts_remaining = as.factor(h_timeouts)
+    home_timeouts_remaining = as.factor(h_timeouts),
+    home_possession = h_possession
   )
   prob <- predict(wp_model, newdata = input_data, type = "response")
   return(prob)
 }
 
+predict_current_wp(home_score = 0, away_score = 0, game_secs_remaining = 3600,
+                   ydstogoal = 75, which_down = 3, yardstogo = 10,
+                   pos_team = "seahawks", home_team = "seahawks",
+                   home_tos = 3)
 
-
-
-add_zachs_wp <- function(model = wp_model,
-                         down_state_levels = down_levels, id) {
+# adding WP data to a game pbp
+add_zachs_wp <- function(model = wp_model, id) {
   if (missing(id)) {
     id_to_plot <- (pbp_2025 %>% sample_n(1))$game_id
   } else {
     id_to_plot <- id
   }
   pbp_game <- pbp_2025 %>%
-    filter(.data$game_id == id_to_plot)
+    filter(pbp_2025$game_id == id_to_plot)
 
   last_play <- pbp_game %>% slice_tail(n = 1)
   if (last_play$qtr == 5) {
@@ -70,8 +68,8 @@ add_zachs_wp <- function(model = wp_model,
     pbp_game <- pbp_game %>%
       mutate(
         game_seconds_remaining = ifelse(qtr < 5,
-          .data$game_seconds_remaining + ot_seconds,
-          .data$game_seconds_remaining
+          game_seconds_remaining + ot_seconds,
+          game_seconds_remaining
         )
       )
   } else {
@@ -80,28 +78,24 @@ add_zachs_wp <- function(model = wp_model,
     qtr_labels <- c("Final", "Q4", "Q3", "Q2", "Q1")
   }
 
-  scrimmage_data <- pbp_game %>%
-    filter(!is.na(.data$down)) %>%
-    mutate(
-      home_score_differential = .data$home_score - .data$away_score,
-      home_dist_to_goal =
-        ifelse(.data$posteam == .data$home_team,
-          .data$yardline_100, 100 - .data$yardline_100
-        ),
-      yardline_100 = .data$home_dist_to_goal, # to clarify for model
-      home_timeouts_remaining = as.factor(.data$home_timeouts_remaining),
-      home_ydstogo = ifelse(.data$posteam == .data$home_team,
-        .data$ydstogo, -.data$ydstogo
-      ),
+  pbp_game <- pbp_game %>%
+    dplyr::mutate(h_possession = (posteam_type == "home"))
 
-      # Matching the trained factor levels
-      home_down_state = factor(
-        paste0(
-          ifelse(.data$posteam == .data$home_team, "home_", "away_"),
-          "dn", .data$down
+  scrimmage_data <- pbp_game %>%
+    filter(!is.na(down)) %>%
+    mutate(
+      home_score_differential = home_score - away_score,
+      home_dist_to_goal =
+        ifelse(posteam == home_team,
+          yardline_100, 100 - yardline_100
         ),
-        levels = down_state_levels
-      )
+      yardline_100 = home_dist_to_goal, # to clarify for model
+      home_timeouts_remaining = as.factor(home_timeouts_remaining),
+      home_ydstogo = ifelse(posteam == home_team,
+        ydstogo, -ydstogo
+      ),
+      down = as.factor(down),
+      home_possession = as.numeric(h_possession)
     )
 
   scrimmage_data$zachs_wp <- predict(wp_model,
@@ -120,6 +114,8 @@ add_zachs_wp <- function(model = wp_model,
 
   return(game_curve_data)
 }
+
+
 
 pbp_example <- add_zachs_wp(id = "2025_05_HOU_BAL")
 
@@ -147,9 +143,4 @@ see_game_state_and_wp <- function(pbp, secs_left) {
   cat("Timeouts Remaining:", row$home_timeouts_remaining, "\n")
 }
 
-see_game_state_and_wp(pbp = pbp_example, secs_left = 3200)
-
-predict_current_wp(home_score = 3, away_score = 0, game_secs_remaining = 3400,
-                   ydstogoal = 75, down = 1, yardstogo = 10,
-                   pos_team = "ARI", home_team = "NE",
-                   home_tos = 3)
+see_game_state_and_wp(pbp = pbp_example, secs_left = 3600)
